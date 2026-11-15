@@ -1,0 +1,416 @@
+package httpapi
+
+const openAPISpec = `openapi: 3.1.0
+info:
+  title: nasa-app-api
+  version: 1.0.0
+  description: |
+    Proyecciones de rotación de cultivos por municipio de Honduras a 12 meses (reto Field Shift, NASA Space Apps 2026).
+    Usa NASA POWER (clima 1996-2025), SoilGrids (suelo), ECMWF SEAS5 vía Open-Meteo (pronóstico estacional) y Copernicus DEM (altitud).
+    Las recomendaciones son probabilidades históricas ponderadas por el pronóstico; no reemplazan al técnico agrónomo.
+    Los errores siguen RFC 9457 (application/problem+json).
+servers:
+  - url: /
+tags:
+  - name: Planes
+  - name: Catálogos
+  - name: Salud
+paths:
+  /v1/plan:
+    get:
+      tags: [Planes]
+      summary: Plan del municipio que contiene una ubicación
+      description: La latitud y la longitud solo se usan para encontrar el municipio; no se guardan ni se registran.
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema: { type: number, minimum: -90, maximum: 90, example: 14.30 }
+        - name: lon
+          in: query
+          required: true
+          schema: { type: number, minimum: -180, maximum: 180, example: -88.60 }
+        - $ref: "#/components/parameters/irrigation"
+        - $ref: "#/components/parameters/priority"
+        - $ref: "#/components/parameters/currentRotation"
+        - $ref: "#/components/parameters/currentCrop"
+        - $ref: "#/components/parameters/fieldFreeFrom"
+      responses:
+        "200":
+          description: Plan del municipio
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MunicipalPlan" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422": { $ref: "#/components/responses/OutsideHonduras" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /v1/municipalities/{code}/plan:
+    get:
+      tags: [Planes]
+      summary: Plan de un municipio
+      parameters:
+        - $ref: "#/components/parameters/municipalityCode"
+        - $ref: "#/components/parameters/irrigation"
+        - $ref: "#/components/parameters/priority"
+        - $ref: "#/components/parameters/currentRotation"
+        - $ref: "#/components/parameters/currentCrop"
+        - $ref: "#/components/parameters/fieldFreeFrom"
+      responses:
+        "200":
+          description: Plan del municipio
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MunicipalPlan" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /v1/departments/{code}/plan:
+    get:
+      tags: [Planes]
+      summary: Plan de un departamento agrupado por recomendación
+      description: Calcula cada municipio del departamento y agrupa los que comparten la misma secuencia de cultivos. Límite por IP más estricto.
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string, example: HN-LE }
+        - $ref: "#/components/parameters/irrigation"
+        - $ref: "#/components/parameters/priority"
+        - $ref: "#/components/parameters/currentRotation"
+        - $ref: "#/components/parameters/currentCrop"
+        - $ref: "#/components/parameters/fieldFreeFrom"
+      responses:
+        "200":
+          description: Grupos de municipios con la misma recomendación
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DepartmentPlan" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /v1/municipalities:
+    get:
+      tags: [Catálogos]
+      summary: Lista de municipios
+      parameters:
+        - name: department
+          in: query
+          required: false
+          schema: { type: string, example: HN-LE }
+      responses:
+        "200":
+          description: Municipios
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  municipalities:
+                    type: array
+                    items: { $ref: "#/components/schemas/MunicipalityItem" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /v1/departments:
+    get:
+      tags: [Catálogos]
+      summary: Lista de departamentos
+      responses:
+        "200":
+          description: Departamentos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  departments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code: { type: string, example: HN-LE }
+                        name: { type: string, example: Lempira }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /v1/crops:
+    get:
+      tags: [Catálogos]
+      summary: Ficha de cultivos con la fuente y la confianza de cada valor
+      responses:
+        "200":
+          description: Ficha de cultivos y plantillas de rotación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version: { type: string }
+                  hash: { type: string }
+                  crops: { type: array, items: { type: object } }
+                  templates: { type: array, items: { type: object } }
+  /livez:
+    get:
+      tags: [Salud]
+      summary: El proceso responde
+      responses:
+        "200": { description: Vivo }
+  /readyz:
+    get:
+      tags: [Salud]
+      summary: Redis responde y hay un dataset publicado
+      responses:
+        "200": { description: Listo }
+        "503": { $ref: "#/components/responses/Unavailable" }
+components:
+  parameters:
+    municipalityCode:
+      name: code
+      in: path
+      required: true
+      description: Código del municipio (shapeID de geoBoundaries). Ver /v1/municipalities.
+      schema: { type: string }
+    irrigation:
+      name: irrigation
+      in: query
+      description: La parcela tiene riego. Habilita cultivos de verano y reporta los milímetros de riego necesarios.
+      schema: { type: boolean, default: false }
+    priority:
+      name: priority
+      in: query
+      description: "Cambia los pesos del puntaje (agua/suelo): balanced 0,55/0,45; water 0,75/0,25; soil 0,30/0,70."
+      schema: { type: string, enum: [balanced, water, soil], default: balanced }
+    currentRotation:
+      name: currentRotation
+      in: query
+      description: Rotación habitual del productor, de 1 a 4 cultivos separados por coma (ids de /v1/crops).
+      schema: { type: string, example: "maize,beans" }
+    currentCrop:
+      name: currentCrop
+      in: query
+      description: Cultivo que está hoy en el terreno (id de /v1/crops).
+      schema: { type: string, example: maize }
+    fieldFreeFrom:
+      name: fieldFreeFrom
+      in: query
+      description: Fecha desde la que el terreno queda libre (entre hoy y 364 días).
+      schema: { type: string, format: date }
+  responses:
+    BadRequest:
+      description: Parámetros inválidos
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotFound:
+      description: Municipio o departamento inexistente
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    OutsideHonduras:
+      description: La ubicación está fuera de Honduras
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    RateLimited:
+      description: Demasiados pedidos; ver la cabecera Retry-After
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Unavailable:
+      description: Datos no cargados, Redis no disponible, servidor ocupado o cálculo demasiado largo; ver Retry-After
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+  schemas:
+    Problem:
+      type: object
+      properties:
+        type: { type: string, example: "urn:nasa-app-api:problem:not-found" }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, description: ID del pedido (también en X-Request-Id) }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+    MunicipalityItem:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        departmentCode: { type: string }
+    Municipality:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        departmentCode: { type: string }
+        departmentName: { type: string }
+    Versions:
+      type: object
+      properties:
+        dataset: { type: string }
+        forecast: { type: string }
+        catalog: { type: string }
+    MunicipalPlan:
+      type: object
+      properties:
+        municipality: { $ref: "#/components/schemas/Municipality" }
+        generatedAt: { type: string, format: date-time }
+        site: { $ref: "#/components/schemas/Site" }
+        evaluation: { $ref: "#/components/schemas/Evaluation" }
+        versions: { $ref: "#/components/schemas/Versions" }
+        warnings:
+          type: array
+          items:
+            type: string
+            enum: [forecastUnavailable, forecastStale, wideElevationRange, climateMonthsExcludedByQualityControl, soilFromSinglePoint, soilHighUncertainty]
+        sources: { type: array, items: { type: object } }
+        disclaimer: { type: string }
+    Site:
+      type: object
+      properties:
+        elevationMedianM: { type: number }
+        elevationMinM: { type: number }
+        elevationMaxM: { type: number }
+        cells: { type: array, items: { type: object } }
+        soil: { type: object }
+        availableWaterMmPerM: { type: number }
+        availableWaterRangeMmPerM: { type: array, items: { type: number } }
+        fortnights: { type: array, items: { type: object } }
+        onsetMedianDayOfYear: { type: integer }
+        canicula:
+          type: object
+          properties:
+            startDayOfYear: { type: integer }
+            endDayOfYear: { type: integer }
+        caniculaYears: { type: integer }
+        years: { type: integer }
+        excludedMonths: { type: array, items: { type: object } }
+        forecastByPlanMonth:
+          type: array
+          description: Probabilidades por tercil para cada mes del plan; null cuando el mes está fuera del pronóstico.
+          items:
+            type: [object, "null"]
+            properties:
+              below: { type: number }
+              normal: { type: number }
+              above: { type: number }
+    Evaluation:
+      type: object
+      properties:
+        start: { type: string, format: date }
+        analogYears: { type: integer }
+        forecastMonths: { type: integer }
+        best: { type: string, description: id de la rotación con mayor puntaje }
+        bestMargin: { type: number, description: Diferencia con la segunda; un margen chico indica empate }
+        rotations:
+          type: array
+          items: { $ref: "#/components/schemas/Rotation" }
+    Rotation:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [current, template, generated] }
+        name: { type: string }
+        feasible: { type: boolean }
+        mulch: { type: boolean }
+        signature: { type: string, example: "maize>beans" }
+        plantings: { type: array, items: { $ref: "#/components/schemas/Planting" } }
+        scores:
+          type: object
+          properties:
+            water: { type: number }
+            soil: { type: number }
+            total: { type: number }
+        soil:
+          type: object
+          properties:
+            bareRainyMonths: { type: integer }
+            rainyMonths: { type: integer }
+            relativeErosion: { type: number }
+            nitrogenBalanceKgHa: { type: number }
+            families: { type: integer }
+            hasLegume: { type: boolean }
+            irrigationMm: { type: number }
+        reasons: { type: array, items: { $ref: "#/components/schemas/Reason" } }
+        quarters: { type: array, items: { $ref: "#/components/schemas/Period" } }
+        semesters: { type: array, items: { $ref: "#/components/schemas/Period" } }
+    Planting:
+      type: object
+      properties:
+        cropId: { type: string }
+        cropName: { type: string }
+        family: { type: string }
+        role: { type: string, enum: [harvest, cover] }
+        season: { type: string, enum: [primera, postrera, apante, verano] }
+        sowDate: { type: string, format: date }
+        harvestDate: { type: string, format: date }
+        cycleDays: { type: integer }
+        relay: { type: boolean, description: "Sembrado dentro del cultivo anterior: cobertura sobre maíz o sorgo, o frijol en el maíz al entrar en madurez (doblado)" }
+        lossProbability: { type: number, description: Probabilidad ponderada de perder más de la mitad del rendimiento por agua }
+        expectedRelativeYield: { type: number }
+        medianRelativeYield: { type: number }
+        irrigationMm: { type: number }
+        heatStressDays: { type: number }
+        caniculaFloweringRisk: { type: number }
+        suitability: { type: number }
+        limitingFactor: { type: string }
+        analogYears: { type: integer }
+        lowConfidenceParameters: { type: array, items: { type: string } }
+    Reason:
+      type: object
+      description: Razón estructurada; el frontend arma el texto.
+      properties:
+        code:
+          type: string
+          enum: [loss_probability, expected_relative_yield, canicula_during_flowering, heat_stress_days, irrigation_required_mm, low_suitability, low_confidence_parameters, bare_soil_rainy_months, relative_erosion, nitrogen_balance_kg_ha, family_repeated, forecast_weighted, no_viable_sowing_window]
+        crop: { type: string }
+        value: { type: number }
+        detail: { type: string }
+        source: { type: string }
+    Period:
+      type: object
+      properties:
+        index: { type: integer }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        sowing: { type: array, items: { type: string } }
+        inField: { type: array, items: { type: string } }
+        harvest: { type: array, items: { type: string } }
+        soilCovered: { type: boolean }
+        expectedWaterBalanceMm: { type: number }
+        forecastInfluenced: { type: boolean }
+    DepartmentPlan:
+      type: object
+      properties:
+        department: { $ref: "#/components/schemas/Municipality" }
+        generatedAt: { type: string, format: date-time }
+        municipalities: { type: integer }
+        versions: { $ref: "#/components/schemas/Versions" }
+        warnings: { type: array, items: { type: string } }
+        disclaimer: { type: string }
+        groups:
+          type: array
+          items:
+            type: object
+            properties:
+              signature: { type: string }
+              rotationName: { type: string }
+              crops: { type: array, items: { type: string } }
+              municipalities: { type: array, items: { $ref: "#/components/schemas/Municipality" } }
+              totalScore: { $ref: "#/components/schemas/Range" }
+              maxLossProbability: { $ref: "#/components/schemas/Range" }
+    Range:
+      type: object
+      properties:
+        min: { type: number }
+        max: { type: number }
+`
