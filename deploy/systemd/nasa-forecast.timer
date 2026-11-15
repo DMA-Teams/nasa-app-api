@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the seasonal forecast load on day 6 of every month
+
+[Timer]
+OnCalendar=*-*-06 06:00:00
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

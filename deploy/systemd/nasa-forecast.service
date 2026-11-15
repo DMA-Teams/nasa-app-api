@@ -1,0 +1,9 @@
+[Unit]
+Description=nasa-app-api monthly seasonal forecast load
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/nasa-app-api/deploy
+ExecStart=/usr/bin/docker compose --profile etl run --rm etl forecast
