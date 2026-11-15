@@ -1,0 +1,7 @@
+.git
+.claude
+data
+deploy
+docs
+tools
+*.md

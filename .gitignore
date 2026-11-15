@@ -1,0 +1,9 @@
+/bin/
+/data/
+/deploy/.env
+*.test
+*.out
+coverage.*
+/.playwright-mcp/
+/.claude/settings.local.json
+/deploy/dump.rdb*

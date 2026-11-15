@@ -1,0 +1,142 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 50
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - unused
+    - errcheck
+    - errorlint
+    - nilerr
+    - forcetypeassert
+    - copyloopvar
+    - durationcheck
+    - reassign
+    - gocritic
+    - revive
+    - whitespace
+    - dupword
+    - predeclared
+    - errname
+    - asciicheck
+    - gocyclo
+    - nestif
+    - funlen
+    - perfsprint
+    - unconvert
+    - ineffassign
+    - gosec
+    - bidichk
+    - bodyclose
+    - noctx
+    - containedctx
+    - fatcontext
+    - sloglint
+    - loggercheck
+    - thelper
+    - usetesting
+    - modernize
+    - intrange
+    - usestdlibvars
+    - exhaustive
+    - nolintlint
+    - depguard
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+    funlen:
+      lines: 120
+      statements: 80
+    gocyclo:
+      min-complexity: 20
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+    exhaustive:
+      default-signifies-exhaustive: true
+    gosec:
+      excludes:
+        - G115
+        - G404
+    depguard:
+      rules:
+        domain-is-pure:
+          files:
+            - "**/internal/agro/**"
+          allow:
+            - $gostd
+          deny:
+            - pkg: net/http
+              desc: el dominio no hace I/O
+            - pkg: os
+              desc: el dominio no hace I/O
+            - pkg: github.com/redis/go-redis/v9
+              desc: el dominio no conoce Redis
+            - pkg: github.com/dma-teams/nasa-app-api/internal/store
+              desc: el dominio no conoce adaptadores
+            - pkg: github.com/dma-teams/nasa-app-api/internal/httpapi
+              desc: el dominio no conoce adaptadores
+            - pkg: github.com/dma-teams/nasa-app-api/internal/sources
+              desc: el dominio no conoce adaptadores
+        use-cases-without-adapters:
+          files:
+            - "**/internal/plan/*.go"
+            - "!**/internal/plan/*_test.go"
+          deny:
+            - pkg: github.com/dma-teams/nasa-app-api/internal/store
+              desc: plan declara sus puertos; store los implementa
+            - pkg: github.com/dma-teams/nasa-app-api/internal/httpapi
+              desc: plan no conoce HTTP
+            - pkg: github.com/dma-teams/nasa-app-api/internal/sources
+              desc: plan no conoce las fuentes externas
+            - pkg: github.com/redis/go-redis/v9
+              desc: plan no conoce Redis
+        http-without-storage:
+          files:
+            - "**/internal/httpapi/**"
+          deny:
+            - pkg: github.com/dma-teams/nasa-app-api/internal/store
+              desc: httpapi recibe los casos de uso ya armados
+            - pkg: github.com/redis/go-redis/v9
+              desc: httpapi no conoce Redis
+
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - funlen
+          - gosec
+          - dupword
+          - bodyclose
+      - path: internal/sources/raster\.go
+        text: G304
+        linters:
+          - gosec
+      - path: cmd/calibrate/
+        text: (G304|G703)
+        linters:
+          - gosec
+      - path: internal/catalog/crops_data\.go
+        linters:
+          - dupword
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/dma-teams/nasa-app-api
