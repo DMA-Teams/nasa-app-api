@@ -390,3 +390,30 @@ func TestOpenAPI_ServedSpecMatchesSourceFile(t *testing.T) {
 		}
 	}
 }
+
+func TestMunicipalities_IncludeAPointInsideEachMunicipality(t *testing.T) {
+	t.Parallel()
+
+	_, h := newTestAPI(t, &fakePlanner{}, nil)
+
+	rec := do(h, "/v1/municipalities?department=D1", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+
+	var body struct {
+		Municipalities []municipalityItem `json:"municipalities"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(body.Municipalities) != 1 {
+		t.Fatalf("municipalities = %+v, want 1", body.Municipalities)
+	}
+
+	m := body.Municipalities[0]
+	if m.Latitude != 14.3 || m.Longitude != -88.6 {
+		t.Errorf("point = (%v, %v), want the square's center (14.3, -88.6)", m.Latitude, m.Longitude)
+	}
+}

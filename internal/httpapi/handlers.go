@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"slices"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dma-teams/nasa-app-api/internal/agro"
+	"github.com/dma-teams/nasa-app-api/internal/geo"
 	"github.com/dma-teams/nasa-app-api/internal/plan"
 )
 
@@ -52,9 +54,17 @@ func (a *API) crops(w http.ResponseWriter, _ *http.Request) {
 }
 
 type municipalityItem struct {
-	Code           string `json:"code"`
-	Name           string `json:"name"`
-	DepartmentCode string `json:"departmentCode"`
+	Code           string  `json:"code"`
+	Name           string  `json:"name"`
+	DepartmentCode string  `json:"departmentCode"`
+	Latitude       float64 `json:"latitude"`
+	Longitude      float64 `json:"longitude"`
+}
+
+const coordinateDecimals = 1e4
+
+func roundCoordinate(v float64) float64 {
+	return math.Round(v*coordinateDecimals) / coordinateDecimals
 }
 
 func (a *API) municipalities(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +80,11 @@ func (a *API) municipalities(w http.ResponseWriter, r *http.Request) {
 
 	for _, m := range dir.Municipalities() {
 		if department == "" || m.DepartmentCode == department {
-			items = append(items, municipalityItem{Code: m.Code, Name: m.Name, DepartmentCode: m.DepartmentCode})
+			p := geo.InteriorPoint(m.Geometry)
+			items = append(items, municipalityItem{
+				Code: m.Code, Name: m.Name, DepartmentCode: m.DepartmentCode,
+				Latitude: roundCoordinate(p.Lat()), Longitude: roundCoordinate(p.Lon()),
+			})
 		}
 	}
 

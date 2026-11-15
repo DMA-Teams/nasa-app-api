@@ -246,6 +246,8 @@ components:
         code: { type: string }
         name: { type: string }
         departmentCode: { type: string }
+        latitude: { type: number, description: "Punto dentro del municipio (no es una ubicación de usuario), 4 decimales" }
+        longitude: { type: number, description: "Punto dentro del municipio (no es una ubicación de usuario), 4 decimales" }
     Municipality:
       type: object
       properties:
