@@ -97,15 +97,11 @@ usuario (conventional commits).
 
 ## Herramientas
 
-Estado al 2026-11-14 en la máquina de desarrollo: **Go no está instalado**, ni `gopls`,
-`golangci-lint` o `govulncheck`. Docker 27.5 sí.
+Estado al 2026-11-15 en la máquina de desarrollo: Go 1.27.4 (scoop), `gopls` v0.24.0,
+`golangci-lint` y `govulncheck` instalados. El servidor MCP `gopls` de `.mcp.json` y el hook
+`.claude/hooks/gofmt-go.js` funcionan.
 
-Hasta que estén instaladas:
-
-- El servidor MCP `gopls` declarado en `.mcp.json` no conecta.
-- El hook `.claude/hooks/gofmt-go.js` avisa que no pudo formatear.
-
-Instalación sugerida (la decide y la ejecuta el usuario):
+Instalación en una máquina nueva:
 
 ```bash
 scoop install go
@@ -113,3 +109,13 @@ go install golang.org/x/tools/gopls@latest
 go install golang.org/x/vuln/cmd/govulncheck@latest
 scoop install golangci-lint
 ```
+
+## Repositorio público
+
+El repositorio se publica sin licencia (decisión del usuario, 2026-11-15): el código queda visible,
+pero no se otorga permiso de reutilización. No agregar un archivo `LICENSE` sin pedirlo.
+
+- `docs/servidor.md` (IP, nombre de la instancia, reglas de SSH) está en `.gitignore` y no se sube.
+  Ningún archivo versionado debe tener la IP, el dominio de producción ni datos de la instancia.
+- Los endpoints públicos no devuelven errores internos (`err.Error()`): el detalle va al log.
+- La atribución de las fuentes de datos está en `README.md`.

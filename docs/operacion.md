@@ -19,10 +19,10 @@ docker stop redis-test
 ## Entorno local en WSL
 
 Requiere Docker dentro de la distribución de WSL (verificado en Ubuntu con Docker 29.6 y Compose v5.2).
-Todo se corre desde WSL, sobre la ruta del repositorio en `/mnt/d/...`.
+Todo se corre desde WSL, sobre la ruta del repositorio (en Windows, `/mnt/<unidad>/...`).
 
 ```bash
-cd /mnt/d/Projects/nasa-app-api/deploy
+cd <ruta-del-repositorio>/deploy
 docker compose -f docker-compose.dev.yml up -d --build redis api
 curl http://127.0.0.1:8080/readyz
 ```
