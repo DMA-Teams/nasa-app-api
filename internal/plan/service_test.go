@@ -112,6 +112,12 @@ func square(lon, lat float64) orb.MultiPolygon {
 func newTestService(tb testing.TB) (*Service, *fakeData) {
 	tb.Helper()
 
+	return newTestServiceWithout(tb)
+}
+
+func newTestServiceWithout(tb testing.TB, unavailable ...string) (*Service, *fakeData) {
+	tb.Helper()
+
 	cat, err := catalog.Load()
 	if err != nil {
 		tb.Fatal(err)
@@ -146,7 +152,11 @@ func newTestService(tb testing.TB) (*Service, *fakeData) {
 			{Code: "M2", Name: "Dos", DepartmentCode: "D1", Geometry: square(-88.5, 14.2)},
 		},
 		[]geo.Department{{Code: "D1", Name: "Lempira"}},
-	)
+	).WithUnavailable(unavailable)
+
+	for _, code := range unavailable {
+		delete(data.profiles, code)
+	}
 
 	svc := NewService(
 		Config{CatalogHash: cat.Hash, Now: func() time.Time { return time.Date(2026, 11, 15, 15, 0, 0, 0, time.UTC) }, MaxParallel: 2},
@@ -270,6 +280,25 @@ func TestDepartmentPlan_GroupsMunicipalitiesWithSameRecommendation(t *testing.T)
 
 	if _, err := svc.DepartmentPlan(context.Background(), "D9", Options{}); !errors.Is(err, ErrDepartmentNotFound) {
 		t.Errorf("unknown department err = %v", err)
+	}
+}
+
+func TestDepartmentPlan_OmitsMunicipalitiesWithoutData(t *testing.T) {
+	t.Parallel()
+
+	svc, _ := newTestServiceWithout(t, "M2")
+
+	d, err := svc.DepartmentPlan(context.Background(), "D1", Options{})
+	if err != nil {
+		t.Fatalf("DepartmentPlan with one municipality missing data: %v", err)
+	}
+
+	if d.Municipalities != 1 || d.Unavailable != 1 {
+		t.Errorf("department plan = %d municipalities, %d unavailable; want 1 and 1", d.Municipalities, d.Unavailable)
+	}
+
+	if _, err := svc.MunicipalPlan(context.Background(), "M2", Options{}); !errors.Is(err, ErrDataUnavailable) {
+		t.Errorf("MunicipalPlan(M2) err = %v, want ErrDataUnavailable", err)
 	}
 }
 

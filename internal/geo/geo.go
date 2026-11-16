@@ -35,6 +35,7 @@ type Index struct {
 	departments    []Department
 	byDepartment   map[string][]string
 	depByCode      map[string]Department
+	unavailable    map[string]bool
 }
 
 func NewIndex(municipalities []Municipality, departments []Department) *Index {
@@ -103,12 +104,27 @@ func (ix *Index) Department(code string) (Department, error) {
 	return d, nil
 }
 
+func (ix *Index) WithUnavailable(codes []string) *Index {
+	c := *ix
+	c.unavailable = make(map[string]bool, len(codes))
+
+	for _, code := range codes {
+		c.unavailable[code] = true
+	}
+
+	return &c
+}
+
 func (ix *Index) Departments() []Department {
-	return slices.Clone(ix.departments)
+	return slices.DeleteFunc(slices.Clone(ix.departments), func(d Department) bool {
+		return !slices.ContainsFunc(ix.byDepartment[d.Code], ix.available)
+	})
 }
 
 func (ix *Index) Municipalities() []Municipality {
-	return slices.Clone(ix.municipalities)
+	return slices.DeleteFunc(slices.Clone(ix.municipalities), func(m Municipality) bool {
+		return !ix.available(m.Code)
+	})
 }
 
 func (ix *Index) MunicipalityCodesOf(departmentCode string) ([]string, error) {
@@ -117,5 +133,21 @@ func (ix *Index) MunicipalityCodesOf(departmentCode string) ([]string, error) {
 		return nil, ErrNotFound
 	}
 
-	return slices.Clone(codes), nil
+	return slices.DeleteFunc(slices.Clone(codes), func(code string) bool { return !ix.available(code) }), nil
+}
+
+func (ix *Index) UnavailableCountOf(departmentCode string) int {
+	n := 0
+
+	for _, code := range ix.byDepartment[departmentCode] {
+		if !ix.available(code) {
+			n++
+		}
+	}
+
+	return n
+}
+
+func (ix *Index) available(code string) bool {
+	return !ix.unavailable[code]
 }

@@ -63,6 +63,44 @@ func TestIndex_MunicipalityAt(t *testing.T) {
 	}
 }
 
+func TestIndexWithUnavailable_HidesMunicipalitiesWithoutData(t *testing.T) {
+	t.Parallel()
+
+	ix := NewIndex(
+		[]Municipality{
+			{Code: "M1", Name: "Uno", DepartmentCode: "D1", Geometry: square(-88.7, 14.2, 0.2)},
+			{Code: "M2", Name: "Dos", DepartmentCode: "D1", Geometry: square(-88.5, 14.2, 0.2)},
+			{Code: "M3", Name: "Tres", DepartmentCode: "D2", Geometry: square(-87.5, 14.2, 0.2)},
+		},
+		[]Department{{Code: "D1", Name: "Uno"}, {Code: "D2", Name: "Dos"}},
+	).WithUnavailable([]string{"M2", "M3"})
+
+	if got := ix.Municipalities(); len(got) != 1 || got[0].Code != "M1" {
+		t.Errorf("Municipalities = %v, want only M1", got)
+	}
+
+	if got := ix.Departments(); len(got) != 1 || got[0].Code != "D1" {
+		t.Errorf("Departments = %v, want only D1", got)
+	}
+
+	codes, err := ix.MunicipalityCodesOf("D1")
+	if err != nil || len(codes) != 1 || codes[0] != "M1" {
+		t.Errorf("MunicipalityCodesOf(D1) = %v, %v; want [M1]", codes, err)
+	}
+
+	if n := ix.UnavailableCountOf("D1"); n != 1 {
+		t.Errorf("UnavailableCountOf(D1) = %d, want 1", n)
+	}
+
+	if m, err := ix.Municipality("M2"); err != nil || m.Code != "M2" {
+		t.Errorf("Municipality(M2) = %v, %v; lookup by code must still work", m.Code, err)
+	}
+
+	if m, err := ix.MunicipalityAt(14.3, -88.4); err != nil || m.Code != "M2" {
+		t.Errorf("MunicipalityAt inside M2 = %v, %v; lookup by location must still work", m.Code, err)
+	}
+}
+
 func TestCellShares_SumToOneAndSplitAcrossCells(t *testing.T) {
 	t.Parallel()
 

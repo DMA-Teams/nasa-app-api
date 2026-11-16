@@ -55,6 +55,7 @@ func (s *Service) DepartmentPlan(ctx context.Context, code string, opts Options)
 		Department:     Municipality{Code: dep.Code, Name: dep.Name, DepartmentCode: dep.Code, DepartmentName: dep.Name},
 		GeneratedAt:    s.cfg.Now().UTC().Format(time.RFC3339),
 		Municipalities: len(plans),
+		Unavailable:    s.deps.Gazetteer.UnavailableCountOf(code),
 		Groups:         groupByRecommendation(plans),
 		Versions:       versions,
 		Warnings:       mergedWarnings(plans),

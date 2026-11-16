@@ -149,6 +149,29 @@ func (s *Store) Profile(ctx context.Context, dataset, code string) (*agro.SitePr
 	return &p, nil
 }
 
+func (s *Store) MissingProfiles(ctx context.Context, dataset string, codes []string) ([]string, error) {
+	pipe := s.rdb.Pipeline()
+	checks := make([]*redis.IntCmd, len(codes))
+
+	for i, code := range codes {
+		checks[i] = pipe.Exists(ctx, profileKey(dataset, code))
+	}
+
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil, fmt.Errorf("profiles of %s: %w", dataset, err)
+	}
+
+	var missing []string
+
+	for i, c := range checks {
+		if c.Val() == 0 {
+			missing = append(missing, codes[i])
+		}
+	}
+
+	return missing, nil
+}
+
 func (s *Store) PutForecast(ctx context.Context, version, cell string, f agro.CellForecast) error {
 	return s.putJSON(ctx, forecastKey(version, cell), f, forecastTTL)
 }

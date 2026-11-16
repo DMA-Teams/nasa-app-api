@@ -62,4 +62,5 @@ type Gazetteer interface {
 	Municipality(code string) (geo.Municipality, error)
 	Department(code string) (geo.Department, error)
 	MunicipalityCodesOf(departmentCode string) ([]string, error)
+	UnavailableCountOf(departmentCode string) int
 }

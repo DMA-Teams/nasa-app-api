@@ -74,6 +74,7 @@ type DepartmentPlan struct {
 	Department     Municipality `json:"department"`
 	GeneratedAt    string       `json:"generatedAt"`
 	Municipalities int          `json:"municipalities"`
+	Unavailable    int          `json:"unavailableMunicipalities"`
 	Groups         []Group      `json:"groups"`
 	Versions       Versions     `json:"versions"`
 	Warnings       []string     `json:"warnings"`

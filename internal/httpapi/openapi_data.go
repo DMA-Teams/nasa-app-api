@@ -395,7 +395,8 @@ components:
       properties:
         department: { $ref: "#/components/schemas/Municipality" }
         generatedAt: { type: string, format: date-time }
-        municipalities: { type: integer }
+        municipalities: { type: integer, description: "Municipios incluidos en el plan" }
+        unavailableMunicipalities: { type: integer, description: "Municipios del departamento omitidos porque sus datos no están completos" }
         versions: { $ref: "#/components/schemas/Versions" }
         warnings: { type: array, items: { type: string } }
         disclaimer: { type: string }

@@ -138,5 +138,14 @@ func TestStore_RedisIntegration(t *testing.T) {
 		t.Errorf("missing profile err = %v, want ErrNotFound", err)
 	}
 
-	t.Cleanup(func() { rdb.Del(ctx, ClimateKey(dataset, "14.50_-88.750")) })
+	if err := s.PutProfile(ctx, dataset, &agro.SiteProfile{MunicipalityCode: "present"}); err != nil {
+		t.Fatalf("PutProfile: %v", err)
+	}
+
+	missing, err := s.MissingProfiles(ctx, dataset, []string{"present", "missing"})
+	if err != nil || len(missing) != 1 || missing[0] != "missing" {
+		t.Errorf("MissingProfiles = %v, %v; want [missing]", missing, err)
+	}
+
+	t.Cleanup(func() { rdb.Del(ctx, ClimateKey(dataset, "14.50_-88.750"), ProfileKey(dataset, "present")) })
 }

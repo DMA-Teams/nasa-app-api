@@ -86,8 +86,21 @@ func run() error {
 			return err
 		}
 
-		directory.Store(ix)
-		logger.InfoContext(ctx, "dataset loaded", slog.String("dataset", v.Dataset), slog.String("forecast", v.Forecast))
+		all := ix.Municipalities()
+		codes := make([]string, len(all))
+
+		for i, m := range all {
+			codes[i] = m.Code
+		}
+
+		missing, err := st.MissingProfiles(ctx, v.Dataset, codes)
+		if err != nil {
+			return err
+		}
+
+		directory.Store(ix.WithUnavailable(missing))
+		logger.InfoContext(ctx, "dataset loaded", slog.String("dataset", v.Dataset), slog.String("forecast", v.Forecast),
+			slog.Int("municipalities", len(codes)-len(missing)), slog.Int("unavailable", len(missing)))
 
 		return nil
 	}, logger)
@@ -248,6 +261,15 @@ func (g gazetteerFunc) Department(code string) (geo.Department, error) {
 	}
 
 	return ix.Department(code)
+}
+
+func (g gazetteerFunc) UnavailableCountOf(departmentCode string) int {
+	ix, err := g.index()
+	if err != nil {
+		return 0
+	}
+
+	return ix.UnavailableCountOf(departmentCode)
 }
 
 func (g gazetteerFunc) MunicipalityCodesOf(departmentCode string) ([]string, error) {
