@@ -1,43 +1,43 @@
 # nasa-app-api
 
-API en Go que proyecta rotaciones de cultivos a 12 meses para cada municipio de Honduras, a partir
-de condiciones climáticas y de suelo. Proyecto del reto **Field Shift** de NASA Space Apps 2026.
+Go API that projects 12-month crop rotations for every municipality in Honduras, based on climate
+and soil conditions. Built for the **Field Shift** challenge of NASA Space Apps 2026.
 
-La recomendación usa solo clima y suelo. No considera precios, costos, plagas, mercado ni
-rendimientos oficiales.
+Recommendations use climate and soil only. Prices, costs, pests, markets and official yields are out
+of scope.
 
-## Cómo funciona
+## How it works
 
-- Un proceso ETL (`cmd/etl`) descarga los datos, arma un perfil climático y de suelo por municipio
-  (299) y lo publica en Redis como un dataset versionado.
-- La API (`cmd/api`) lee solo de Redis. Ningún pedido de usuario llama a servicios externos.
-- El motor (`internal/agro`) simula el balance hídrico FAO-56 de cada rotación candidata con el
-  clima histórico y el pronóstico estacional, y la puntúa. Las respuestas traen razones
-  estructuradas; el texto lo arma el frontend.
-- La latitud y la longitud del usuario se usan solo para encontrar el municipio. No se guardan ni se
-  registran.
+- An ETL process (`cmd/etl`) downloads the source data, builds a climate and soil profile for each
+  of the 299 municipalities, and publishes it to Redis as a versioned dataset.
+- The API (`cmd/api`) reads only from Redis. No user request calls an external service.
+- The engine (`internal/agro`) simulates the FAO-56 water balance of each candidate rotation using
+  historical climate and the seasonal forecast, then scores it. Responses carry structured reasons;
+  the frontend turns them into text.
+- The user's latitude and longitude are used only to find the municipality. They are neither stored
+  nor logged.
 
 ## Endpoints
 
-| Método y ruta | Qué devuelve |
-| ------------- | ------------ |
-| `GET /v1/plan?lat=&lon=` | Plan del municipio que contiene el punto |
-| `GET /v1/municipalities/{code}/plan` | Plan de un municipio |
-| `GET /v1/departments/{code}/plan` | Plan agregado de un departamento |
-| `GET /v1/municipalities`, `GET /v1/departments` | Listados |
-| `GET /v1/crops` | Ficha de los 22 cultivos |
-| `GET /livez`, `GET /readyz` | Salud |
-| `GET /docs`, `GET /openapi.yaml` | Swagger UI y contrato OpenAPI 3.1 |
+| Method and path | Returns |
+| --------------- | ------- |
+| `GET /v1/plan?lat=&lon=` | Plan for the municipality that contains the point |
+| `GET /v1/municipalities/{code}/plan` | Plan for one municipality |
+| `GET /v1/departments/{code}/plan` | Aggregated plan for one department |
+| `GET /v1/municipalities`, `GET /v1/departments` | Listings |
+| `GET /v1/crops` | Catalog of the 22 crops |
+| `GET /livez`, `GET /readyz` | Health checks |
+| `GET /docs`, `GET /openapi.yaml` | Swagger UI and the OpenAPI 3.1 contract |
 
-Parámetros opcionales del plan: `currentRotation`, `currentCrop`, `fieldFreeFrom`, `irrigation` y
-`priority`. El detalle está en `api/openapi.yaml`.
+Optional plan parameters: `currentRotation`, `currentCrop`, `fieldFreeFrom`, `irrigation` and
+`priority`. See `api/openapi.yaml` for details.
 
-La API es pública, sin login, con límite de pedidos por IP. Los errores siguen RFC 9457
-(`application/problem+json`).
+The API is public, requires no login, and is rate limited per IP. Errors follow RFC 9457
+(`application/problem+json`). Response texts are in Spanish.
 
-## Correr y probar
+## Run and test
 
-Requiere Go 1.27 y, para correr la API, Redis 8 (o Docker).
+Requires Go 1.27 and, to run the API, Redis 8 (or Docker).
 
 ```bash
 go test -race ./...
@@ -45,36 +45,37 @@ golangci-lint run ./...
 govulncheck ./...
 ```
 
-Entorno local con Docker, carga de datos y despliegue: `docs/operacion.md`.
+Local Docker environment, data loading and deployment: `docs/operacion.md`.
 
-## Documentación
+## Documentation
 
-| Documento | Contenido |
-| --------- | --------- |
-| `docs/plan-implementacion.md` | Alcance, base científica y decisiones |
-| `docs/arquitectura.md` | Paquetes, flujos, datos en Redis, concurrencia y resiliencia |
-| `docs/fuentes.md` | Origen de cada constante científica y agronómica |
-| `docs/operacion.md` | Carga de datos, despliegue y verificación |
-| `docs/calibracion.md` | Calibración del motor y decisiones de alcance |
+The documents are written in Spanish.
 
-## Fuentes de datos y atribución
+| Document | Content |
+| -------- | ------- |
+| `docs/plan-implementacion.md` | Scope, scientific basis and decisions |
+| `docs/arquitectura.md` | Packages, flows, Redis data, concurrency and resilience |
+| `docs/fuentes.md` | Source of every scientific and agronomic constant |
+| `docs/operacion.md` | Data loading, deployment and verification |
+| `docs/calibracion.md` | Engine calibration and scope decisions |
 
-| Fuente | Uso | Condiciones |
-| ------ | --- | ----------- |
-| [NASA POWER](https://power.larc.nasa.gov/) (NASA Langley Research Center) | Clima diario histórico | Datos públicos; citar a NASA POWER |
-| [SoilGrids](https://soilgrids.org/) (ISRIC) | Propiedades del suelo | CC BY 4.0 |
-| [geoBoundaries](https://www.geoboundaries.org/) | Límites de municipios y departamentos | Municipios CC BY 4.0 (ICF); departamentos ODbL (OpenStreetMap) |
-| [Open-Meteo](https://open-meteo.com/) (ECMWF SEAS5, Copernicus DEM) | Pronóstico estacional y altitud | CC BY 4.0; la API gratuita es solo para uso no comercial |
-| GPM IMERG (NASA GES DISC) | Solo calibración (`cmd/calibrate`) | Datos públicos; citar si se publican resultados |
+## Data sources and attribution
 
-Los archivos de `testdata/` son derivados de estas fuentes y quedan sujetos a las mismas
-condiciones.
+| Source | Use | Terms |
+| ------ | --- | ----- |
+| [NASA POWER](https://power.larc.nasa.gov/) (NASA Langley Research Center) | Historical daily climate | Public data; cite NASA POWER |
+| [SoilGrids](https://soilgrids.org/) (ISRIC) | Soil properties | CC BY 4.0 |
+| [geoBoundaries](https://www.geoboundaries.org/) | Municipal and department boundaries | Municipalities CC BY 4.0 (ICF); departments ODbL (OpenStreetMap) |
+| [Open-Meteo](https://open-meteo.com/) (ECMWF SEAS5, Copernicus DEM) | Seasonal forecast and elevation | CC BY 4.0; the free API is for non-commercial use only |
+| GPM IMERG (NASA GES DISC) | Calibration only (`cmd/calibrate`) | Public data; cite if results are published |
 
-## Licencia
+The files in `testdata/` are derived from these sources and are subject to the same terms.
 
-Este repositorio no tiene licencia de código abierto. El código se publica para consulta: todos los
-derechos quedan reservados por sus autores, y copiarlo, modificarlo o redistribuirlo requiere
-permiso. Los datos de terceros mantienen sus propias licencias (ver la tabla anterior).
+## License
 
-Las skills de `.claude/skills/golang-*` son de terceros y tienen su propia licencia
+This repository has no open source license. The code is published for reference only: all rights
+are reserved by its authors, and copying, modifying or redistributing it requires permission.
+Third-party data keeps its own licenses (see the table above).
+
+The skills in `.claude/skills/golang-*` are third-party and carry their own license
 (`.claude/skills/LICENSE-samber-cc-skills-golang`).
