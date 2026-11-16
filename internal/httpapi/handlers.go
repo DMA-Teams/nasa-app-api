@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"log/slog"
 	"math"
 	"net/http"
 	"slices"
@@ -34,7 +35,8 @@ func (a *API) readyz(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	if err := a.ready(ctx); err != nil {
-		writeProblem(w, r, Problem{Type: problemType("not-ready"), Title: "No listo", Status: http.StatusServiceUnavailable, Detail: err.Error()}, 5)
+		a.logger.WarnContext(r.Context(), "readiness check failed", slog.String("error", err.Error()))
+		writeProblem(w, r, Problem{Type: problemType("not-ready"), Title: "No listo", Status: http.StatusServiceUnavailable}, 5)
 
 		return
 	}

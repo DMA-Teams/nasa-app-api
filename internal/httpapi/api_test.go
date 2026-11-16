@@ -319,6 +319,24 @@ func TestHealthAndShutdown(t *testing.T) {
 	}
 }
 
+func TestReadyz_DoesNotExposeDependencyError(t *testing.T) {
+	t.Parallel()
+
+	api, _ := newTestAPI(t, &fakePlanner{}, nil)
+	api.ready = func(context.Context) error {
+		return errors.New("dial tcp 172.18.0.2:6379: connect: connection refused")
+	}
+
+	rec := do(api.Handler(), "/readyz", nil)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("readyz = %d, want 503", rec.Code)
+	}
+
+	if body := rec.Body.String(); strings.Contains(body, "172.18.0.2") || strings.Contains(body, "6379") {
+		t.Errorf("readyz body exposes the dependency error: %s", body)
+	}
+}
+
 func TestCORSAndCatalog(t *testing.T) {
 	t.Parallel()
 
@@ -382,6 +400,12 @@ func TestOpenAPI_ServedSpecMatchesSourceFile(t *testing.T) {
 	rec = do(h, "/docs", nil)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "swagger-ui-dist@"+swaggerUIVersion) {
 		t.Errorf("docs status %d", rec.Code)
+	}
+
+	for _, sri := range []string{swaggerCSSSRI, swaggerBundleSRI} {
+		if !strings.Contains(rec.Body.String(), `integrity="`+sri+`" crossorigin="anonymous"`) {
+			t.Errorf("docs page is missing subresource integrity %s", sri)
+		}
 	}
 
 	for _, route := range []string{"/v1/plan", "/v1/municipalities/{code}/plan", "/v1/departments/{code}/plan", "/v1/municipalities", "/v1/departments", "/v1/crops", "/livez", "/readyz"} {
