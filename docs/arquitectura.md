@@ -1,7 +1,6 @@
 # Arquitectura: nasa-app-api (Go)
 
-> Estado: **implementada**. Se escribió como diseño el 2026-11-14, antes del código; el avance real
-> está en `docs/estado.md`.
+> Estado: **implementada**. Se escribió como diseño el 2026-11-14, antes del código.
 >
 > Se apoya en `docs/plan-implementacion.md` (qué se construye y por qué) y en las skills de
 > `.claude/skills/` (cómo se escribe). Este documento decide la estructura, los flujos y los valores

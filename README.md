@@ -55,7 +55,7 @@ Entorno local con Docker, carga de datos y despliegue: `docs/operacion.md`.
 | `docs/arquitectura.md` | Paquetes, flujos, datos en Redis, concurrencia y resiliencia |
 | `docs/fuentes.md` | Origen de cada constante científica y agronómica |
 | `docs/operacion.md` | Carga de datos, despliegue y verificación |
-| `docs/estado.md`, `docs/calibracion.md` | Estado actual y próximos pasos |
+| `docs/calibracion.md` | Calibración del motor y decisiones de alcance |
 
 ## Fuentes de datos y atribución
 

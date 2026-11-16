@@ -21,8 +21,8 @@
 
 ## 0.0 Estado actual
 
-> **v6 (2026-11-15): la API está implementada y probada con datos reales de Lempira.** El estado y
-> los pendientes están en `docs/estado.md`; la calibración del motor, en `docs/calibracion.md`.
+> **v6 (2026-11-15): la API está implementada y probada con datos reales de Lempira.** La
+> calibración del motor está en `docs/calibracion.md`.
 > **Alcance final:** solo clima y suelo; se elimina el subpuntaje de ingreso (§ 4.9 y § 7.9 de este
 > plan quedan reemplazados por `docs/calibracion.md` § 1).
 

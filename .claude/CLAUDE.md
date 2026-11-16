@@ -13,7 +13,8 @@ POWER, SoilGrids y el pronóstico estacional ECMWF SEAS5. Reto "Field Shift" de 
 
 4. `docs/fuentes.md` (origen de constantes y supuestos) y `docs/operacion.md` (carga y despliegue).
 5. **`docs/estado.md` y `docs/calibracion.md`: dónde quedamos y qué sigue.** Empezar por acá en
-   cada sesión nueva.
+   cada sesión nueva. `docs/estado.md` es local: está en `.gitignore` y no se sube al repositorio
+   público (decisión del usuario, 2026-11-15). Si no existe en la máquina, avisar.
 
 **Alcance (decisión del usuario, 2026-11-15):** la app recomienda solo con condiciones climáticas y
 de suelo. Precios, costos, plagas, mercado y rendimientos oficiales están fuera del alcance: no
@@ -115,7 +116,8 @@ scoop install golangci-lint
 El repositorio se publica sin licencia (decisión del usuario, 2026-11-15): el código queda visible,
 pero no se otorga permiso de reutilización. No agregar un archivo `LICENSE` sin pedirlo.
 
-- `docs/servidor.md` (IP, nombre de la instancia, reglas de SSH) está en `.gitignore` y no se sube.
+- `docs/servidor.md` (IP, nombre de la instancia, reglas de SSH) y `docs/estado.md` (bitácora de
+  trabajo) están en `.gitignore` y no se suben.
   Ningún archivo versionado debe tener la IP, el dominio de producción ni datos de la instancia.
 - Los endpoints públicos no devuelven errores internos (`err.Error()`): el detalle va al log.
 - La atribución de las fuentes de datos está en `README.md`.
